@@ -7,7 +7,6 @@ uint32_t sleep_hour = 19;
 uint32_t wakeup_hour = 7;
 uint32_t error_code = 0;
 uint32_t battery_threshold = 0;
-bool first_cycle = true;
 RTCZero rtc;
 
 
@@ -39,6 +38,10 @@ void receiveI2C(int packetSize)
 
     case REG_STATE:
       Wire.write(state);
+      break;
+
+    case REG_BATTERY:
+      Wire.write(battery);
       break;
 
     default:
@@ -99,6 +102,10 @@ void receiveI2C(int packetSize)
         sendDataToSigfox(val);
         break;
 
+      case REG_BATTERY_THRESHOLD:
+        battery_threshold = val;
+        break;
+
       default:
         bitSet(error_code, ERROR_I2C_REG_NOT_FOUND);
         break;
@@ -146,11 +153,11 @@ uint32_t getTimeFromSigfox(){
   return (uint32_t) (time_buf[0] << 24 | time_buf[1] << 16 | time_buf[2] << 8 | time_buf[3]);
 }
 
-void setRTCTime(u_int32_t unix_time){
+void setRTCTime(uint32_t unix_time){
   time_t t = unix_time;
   rtc.setTime(hour(t), minute(t), second(t));
   rtc.setDate(day(t), month(t), year(t)-2000);
-  bitSet(state, FLAG_PIC_TIME_REFRESHED);
+  bitSet(state, FLAG_TIME_REFRESHED);
 }
 
 void setAlarmForNextCycle(){
@@ -176,7 +183,7 @@ void powerUpRPI(){
 
 void powerDownRPI(){
   while(bitRead(state, FLAG_RPI_POWER) == 1){};
-  delay(1000);
+  delay(5000);
   digitalWrite(PIN_POWER_RPI, LOW);
 }
 
@@ -224,20 +231,18 @@ void setup()
   pinMode(PIN_POWER_RPI, OUTPUT);
 
   // REGISTER INIT
-  state = 0; // 0-Eteint 1-Démarré 2-Données compilées 3-Terminé
+  state = 0; 
   battery = 0;
   battery_threshold = 11;
   sleep_hour = 19;
   wakeup_hour = 7;
   error_code = 0;
-  first_cycle = true;
 
   setRTCTime(1634293107);
 
   // RTC INIT
   rtc.attachInterrupt(alarmFirstCycle);
   setAlarmForNextCycle();
-
   rtc.standbyMode();
 }
 
