@@ -27,8 +27,8 @@
 #define FLAG_RPI_DATA_READY 3
 #define FLAG_SIGFOX_TRANSMITTED 4
 
-#define PIN_POWER_RPI 1
-#define PIN_BATTERY 1
+#define PIN_POWER_5V 1
+#define PIN_BATTERY 0
 
 void receiveI2C(int packetSize);
 void sendDataToSigfox(uint32_t data);

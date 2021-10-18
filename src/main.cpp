@@ -6,7 +6,7 @@ uint32_t battery = 0;
 uint32_t sleep_hour = 19;
 uint32_t wakeup_hour = 7;
 uint32_t error_code = 0;
-uint32_t battery_threshold = 0;
+uint32_t battery_threshold = -1;
 RTCZero rtc;
 
 
@@ -163,8 +163,10 @@ void setRTCTime(uint32_t unix_time){
 void setAlarmForNextCycle(){
   rtc.detachInterrupt();
   rtc.attachInterrupt(alarmNextCycle);
-  rtc.setAlarmTime(00, (rtc.getMinutes()+10)%60, 00);
-  rtc.enableAlarm(rtc.MATCH_MMSS);
+  //rtc.setAlarmTime(00, (rtc.getMinutes()+10)%60, 00);
+  //rtc.enableAlarm(rtc.MATCH_MMSS);
+  rtc.setAlarmTime(00, 00, (rtc.getSeconds()+10)%60);
+  rtc.enableAlarm(rtc.MATCH_SS);
   rtc.standbyMode();
 }
 
@@ -177,24 +179,24 @@ void setAlarmForNextDay(){
 }
 
 void powerUpRPI(){
-  digitalWrite(PIN_POWER_RPI, HIGH);
+  digitalWrite(PIN_POWER_5V, HIGH);
   while(bitRead(state, FLAG_RPI_POWER) == 0){};
 }
 
 void powerDownRPI(){
   while(bitRead(state, FLAG_RPI_POWER) == 1){};
   delay(5000);
-  digitalWrite(PIN_POWER_RPI, LOW);
+  digitalWrite(PIN_POWER_5V, LOW);
 }
 
 void alarmFirstCycle(){
     bitSet(state, FLAG_FIRST_CYCLE);
-    cycle();
+
 }
 
 void alarmNextCycle(){
     bitClear(state, FLAG_FIRST_CYCLE);
-    cycle();
+
 }
 
 void cycle(){
@@ -217,8 +219,8 @@ void cycle(){
 void setup()
 {
   // SERIAL INIT
-  Serial.begin(9600);
-  while (!Serial){};
+  //Serial.begin(9600);
+  //while (!Serial){};
 
   // I2C INIT
   Wire.begin(MKRFOX_ADDR);
@@ -228,7 +230,8 @@ void setup()
   rtc.begin();
 
   // PIN INIT
-  pinMode(PIN_POWER_RPI, OUTPUT);
+  pinMode(PIN_POWER_5V, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
 
   // REGISTER INIT
   state = 0; 
@@ -239,15 +242,31 @@ void setup()
   error_code = 0;
 
   setRTCTime(1634293107);
-
   // RTC INIT
   rtc.attachInterrupt(alarmFirstCycle);
-  setAlarmForNextCycle();
+  //rtc.setAlarmTime(00, (rtc.getMinutes()+10)%60, 00);
+  rtc.setAlarmTime(00, 00, (rtc.getSeconds()+10)%60);
+  rtc.enableAlarm(rtc.MATCH_SS);
   rtc.standbyMode();
 }
 
 void loop()
 {
-
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(1000);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(1000);
+    digitalWrite(LED_BUILTIN, LOW);
+    rtc.disableAlarm();
+    if(rtc.getHours() < sleep_hour && rtc.getHours() > wakeup_hour){
+      // battery = analogRead(PIN_BATTERY);
+      // if(battery > battery_threshold){
+      //   powerUpRPI();
+      //   powerDownRPI();
+      // }
+      setAlarmForNextCycle();
+    }else{
+      setAlarmForNextDay();
+    }
 
 }
