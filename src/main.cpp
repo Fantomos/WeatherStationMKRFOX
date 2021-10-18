@@ -7,6 +7,9 @@ uint32_t sleep_hour = 19;
 uint32_t wakeup_hour = 7;
 uint32_t error_code = 0;
 uint32_t battery_threshold = -1;
+bool request_sigfox_time = false;
+bool request_sigfox_data = false;
+uint32_t data_sigfox = 0;
 RTCZero rtc;
 
 
@@ -92,14 +95,15 @@ void receiveI2C(int packetSize)
 
       case REG_TIME:
         if(val == 0){
-          setRTCTime(getTimeFromSigfox());
+          request_sigfox_time = true;
         }else{
           setRTCTime(val);
         }
         break;
 
       case REG_DATA:
-        sendDataToSigfox(val);
+        data_sigfox = val;
+        request_sigfox_data = true;
         break;
 
       case REG_BATTERY_THRESHOLD:
@@ -163,10 +167,8 @@ void setRTCTime(uint32_t unix_time){
 void setAlarmForNextCycle(){
   rtc.detachInterrupt();
   rtc.attachInterrupt(alarmNextCycle);
-  //rtc.setAlarmTime(00, (rtc.getMinutes()+10)%60, 00);
-  //rtc.enableAlarm(rtc.MATCH_MMSS);
-  rtc.setAlarmTime(00, 00, (rtc.getSeconds()+10)%60);
-  rtc.enableAlarm(rtc.MATCH_SS);
+  rtc.setAlarmTime(00, (rtc.getMinutes()+10)%60, 00);
+  rtc.enableAlarm(rtc.MATCH_MMSS);
   rtc.standbyMode();
 }
 
@@ -179,12 +181,12 @@ void setAlarmForNextDay(){
 }
 
 void powerUpRPI(){
-  digitalWrite(PIN_POWER_5V, HIGH);
-  while(bitRead(state, FLAG_RPI_POWER) == 0){};
+  digitalWrite(PIN_POWER_5V, HIGH); // On active l'alimentation du RPI
+  while(bitRead(state, FLAG_RPI_POWER) == 0){}; // On attends que le RPI s'initialise
 }
 
-void powerDownRPI(){
-  while(bitRead(state, FLAG_RPI_POWER) == 1){};
+void powerDownRPI()
+{
   delay(5000);
   digitalWrite(PIN_POWER_5V, LOW);
 }
@@ -199,29 +201,10 @@ void alarmNextCycle(){
 
 }
 
-void cycle(){
-  rtc.disableAlarm();
-  if(rtc.getHours() < sleep_hour && rtc.getHours() > wakeup_hour){
-    battery = analogRead(PIN_BATTERY);
-    if(battery > battery_threshold){
-      powerUpRPI();
-      powerDownRPI();
-    }
-    setAlarmForNextCycle();
-  }else{
-    setAlarmForNextDay();
-  }
-
-}
-
 
 // FIRST STARTUP
 void setup()
 {
-  // SERIAL INIT
-  //Serial.begin(9600);
-  //while (!Serial){};
-
   // I2C INIT
   Wire.begin(MKRFOX_ADDR);
   Wire.onReceive(receiveI2C); // register event
@@ -231,42 +214,50 @@ void setup()
 
   // PIN INIT
   pinMode(PIN_POWER_5V, OUTPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(PIN_BATTERY, INPUT);
 
   // REGISTER INIT
   state = 0; 
-  battery = 0;
-  battery_threshold = 11;
-  sleep_hour = 19;
-  wakeup_hour = 7;
   error_code = 0;
+  battery = 0;
+  sleep_hour = DEFAULT_SLEEP_HOUR;
+  wakeup_hour = DEFAULT_WAKEUP_HOUR;
+  battery_threshold = DEFAULT_BATTERY_THRESHOLD;
+  request_sigfox_time = false;
+  request_sigfox_data = false;
+  data_sigfox = 0;
 
-  setRTCTime(1634293107);
+  
   // RTC INIT
+  rtc.setHours(12); // Lors du 1er démarrage on règle l'heure dans la plage de fonctionnement
   rtc.attachInterrupt(alarmFirstCycle);
-  //rtc.setAlarmTime(00, (rtc.getMinutes()+10)%60, 00);
-  rtc.setAlarmTime(00, 00, (rtc.getSeconds()+10)%60);
-  rtc.enableAlarm(rtc.MATCH_SS);
+  rtc.setAlarmTime(00, (rtc.getMinutes()+10)%60, 00);
+  rtc.enableAlarm(rtc.MATCH_MMSS);
   rtc.standbyMode();
 }
 
 void loop()
 {
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(1000);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(1000);
-    digitalWrite(LED_BUILTIN, LOW);
     rtc.disableAlarm();
     if(rtc.getHours() < sleep_hour && rtc.getHours() > wakeup_hour){
-      // battery = analogRead(PIN_BATTERY);
-      // if(battery > battery_threshold){
-      //   powerUpRPI();
-      //   powerDownRPI();
-      // }
-      setAlarmForNextCycle();
+      battery = analogRead(PIN_BATTERY);
+      if(battery > battery_threshold){
+        powerUpRPI(); // On allume le RPI
+        while(bitRead(state, FLAG_RPI_POWER) == 1){ // Tant que le RPI n'a pas terminé, on continue à répondre aux commandes I2C
+            if(request_sigfox_time){
+              setRTCTime(getTimeFromSigfox());
+              request_sigfox_time = false;
+            }
+            if(request_sigfox_data){
+              sendDataToSigfox(data_sigfox);
+              request_sigfox_data = false;
+            }
+        };
+        powerDownRPI(); // On éteints le RPI
+      }
+      setAlarmForNextCycle(); // On prépare le prochain révéil pour dans 10 min
     }else{
-      setAlarmForNextDay();
+      setAlarmForNextDay(); // On prépare le prochain révéil pour le jour suivant
     }
 
 }
