@@ -16,7 +16,6 @@
 #define REG_ERROR 0x11
 #define REG_DATA 0x12
 
-
 #define ERROR_SIGFOX_BEGIN 0
 #define ERROR_SIGFOX_TRANSMIT 1
 #define ERROR_I2C_REG_NOT_FOUND 2
@@ -29,6 +28,10 @@
 
 #define PIN_POWER_5V 1
 #define PIN_BATTERY 0
+
+#define DEFAULT_SLEEP_HOUR 19
+#define DEFAULT_WAKEUP_HOUR 8
+#define DEFAULT_BATTERY_THRESHOLD 11
 
 void receiveI2C(int packetSize);
 void sendDataToSigfox(uint32_t data);
