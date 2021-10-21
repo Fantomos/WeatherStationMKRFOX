@@ -1,4 +1,4 @@
-// #include <main.h>
+#include <main.h>
 
 
 // uint32_t state = 0;
@@ -165,10 +165,12 @@
 // }
 
 // void setAlarmForNextCycle(){
+//   SigFox.begin();
+//   delay(200);
+//   SigFox.end();
+//   delay(200);
 //   rtc.detachInterrupt();
 //   rtc.attachInterrupt(alarmNextCycle);
-//   //rtc.setAlarmTime(00, (rtc.getMinutes()+10)%60, 00);
-//   //rtc.enableAlarm(rtc.MATCH_MMSS);
 //   rtc.setAlarmTime(00, 00, (rtc.getSeconds()+10)%60);
 //   rtc.enableAlarm(rtc.MATCH_SS);
 //   rtc.standbyMode();
@@ -211,12 +213,18 @@
 //   //Serial.begin(9600);
 //   //while (!Serial){};
 
+//   // SigFox INIT
+//   SigFox.begin();
+//   delay(200);
+//   SigFox.end();
+//   delay(200);
+
 //   // I2C INIT
 //   Wire.begin(MKRFOX_ADDR);
 //   Wire.onReceive(receiveI2C); // register event
 
 //   // RTC INIT
-//   rtc.begin();
+//   rtc.begin(false);
 
 //   // PIN INIT
 //   pinMode(PIN_POWER_5V, OUTPUT);
@@ -232,39 +240,45 @@
 //   error_code = 0;
 
 //   setRTCTime(1634293107);
+
+//   delay(10000);
 //   // RTC INIT
 //   rtc.attachInterrupt(alarmFirstCycle);
-//   //rtc.setAlarmTime(00, (rtc.getMinutes()+10)%60, 00);
-//   //rtc.enableAlarm(rtc.MATCH_MMSS);
-//   rtc.setAlarmTime(00, 00, (rtc.getSeconds()+10)%60);
+//   rtc.setAlarmTime(00, 00, (rtc.getSeconds()+30)%60);
 //   rtc.enableAlarm(rtc.MATCH_SS);
 //   rtc.standbyMode();
 // }
 
 // void loop()
 // {
-//     digitalWrite(LED_BUILTIN, HIGH);
-//     delay(5000);
 //     rtc.disableAlarm();
-//     if(rtc.getHours() < sleep_hour && rtc.getHours() > wakeup_hour){
-//       battery = analogRead(PIN_BATTERY);
-//       if(battery > battery_threshold){
-//         powerUpRPI();
-//         while(bitRead(state, FLAG_RPI_POWER) == 1){ // Tant que le RPI n'a pas terminé, on continue à répondre aux commandes I2C
-//             if(request_sigfox_time){
-//               setRTCTime(getTimeFromSigfox());
-//               request_sigfox_time = false;
-//             }
-//             if(request_sigfox_data){
-//               sendDataToSigfox(data_sigfox);
-//               request_sigfox_data = false;
-//             }
-//         };
-//         powerDownRPI();
-//       }
-//       setAlarmForNextCycle();
-//     }else{
-//       setAlarmForNextDay();
-//     }
+//     digitalWrite(LED_BUILTIN, HIGH);
+    
+//     int val = analogRead(PIN_BATTERY);
+    
+//     val = map(val, 0, 1023, 0, 255);
+
+//     delay(10000);
+//     digitalWrite(LED_BUILTIN, LOW);
+//     setAlarmForNextCycle();
+
 
 // }
+
+void setup(){
+
+ //SERIAL INIT
+  Serial.begin(9600);
+  while (!Serial){};
+
+  pinMode(PIN_BATTERY, INPUT);
+
+}
+
+void loop(){
+    int x =  analogRead(PIN_BATTERY);
+    double battery = x*BATTERY_CONSTANT;
+    Serial.println(x);
+    Serial.println(battery);
+    delay(1000);
+}

@@ -1,9 +1,11 @@
+#define VERY_LOW_POWER 1
 #include <Arduino.h>
 #include <SigFox.h>
 #include <ArduinoLowPower.h>
 #include <RTCZero.h>
 #include <Wire.h>
 #include <TimeLib.h>
+
 
 #define MKRFOX_ADDR 0x55
 
@@ -32,6 +34,9 @@
 #define DEFAULT_SLEEP_HOUR 19
 #define DEFAULT_WAKEUP_HOUR 8
 #define DEFAULT_BATTERY_THRESHOLD 11
+
+#define CYCLE_TIME 10
+#define BATTERY_CONSTANT 0.0149560117
 
 void receiveI2C(int packetSize);
 void sendDataToSigfox(uint32_t data);
