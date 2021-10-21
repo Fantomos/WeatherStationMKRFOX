@@ -5,7 +5,7 @@
 #include <RTCZero.h>
 #include <Wire.h>
 #include <TimeLib.h>
-
+#include <Timezone.h>
 
 #define MKRFOX_ADDR 0x55
 
@@ -48,4 +48,3 @@ void powerUpRPI();
 void powerDownRPI();
 void alarmFirstCycle();
 void alarmNextCycle();
-void cycle();

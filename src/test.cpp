@@ -265,20 +265,20 @@
 
 // }
 
-void setup(){
+// void setup(){
 
- //SERIAL INIT
-  Serial.begin(9600);
-  while (!Serial){};
+//  //SERIAL INIT
+//   Serial.begin(9600);
+//   while (!Serial){};
 
-  pinMode(PIN_BATTERY, INPUT);
+//   pinMode(PIN_BATTERY, INPUT);
 
-}
+// }
 
-void loop(){
-    int x =  analogRead(PIN_BATTERY);
-    double battery = x*BATTERY_CONSTANT;
-    Serial.println(x);
-    Serial.println(battery);
-    delay(1000);
-}
+// void loop(){
+//     int x =  analogRead(PIN_BATTERY);
+//     double battery = x*BATTERY_CONSTANT;
+//     Serial.println(x);
+//     Serial.println(battery);
+//     delay(1000);
+// }
