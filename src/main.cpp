@@ -2,7 +2,7 @@
 
 
 uint32_t state;
-float battery;
+uint16_t battery;
 uint32_t sleep_hour;
 uint32_t wakeup_hour;
 uint32_t error_code;
@@ -10,21 +10,16 @@ uint32_t battery_threshold;
 bool request_sigfox_time;
 bool request_sigfox_data;
 uint32_t data_sigfox;
+uint8_t read_reg = 0;
 RTCZero rtc;
 TimeChangeRule Rule_France_summer = {"RHEE", Last, Sun, Mar, 2, 120}; // Règle de passage à l'heure d'été pour la France
 TimeChangeRule Rule_France_winter = {"RHHE", Last, Sun, Oct, 3, 60}; // Règle de passage à l'heure d'hiver la France
 Timezone Convert_to_France(Rule_France_summer, Rule_France_winter); // Objet de conversion d'heure avec les caractéristiques de la métropole française
 
-void receiveI2C(int packetSize)
-{
-  Serial.println("Receiving... ");
-  Serial.println(packetSize);
 
-  if (packetSize == 1) // READ OPERATION
+void sendI2C(){
+  switch (read_reg)
   {
-    byte reg = Wire.read();
-    switch (reg)
-    {
     case REG_SLEEP:
       Wire.write(sleep_hour);
       break;
@@ -38,7 +33,11 @@ void receiveI2C(int packetSize)
       break;
 
     case REG_TIME:
-      Wire.write((u_int32_t)rtc.getEpoch());
+      {
+      u_int32_t time = rtc.getEpoch();
+      uint8_t data[] = {time >> 24, time >> 16, time >> 8, time};
+      Wire.write(data,(uint8_t)4);
+      }
       break;
 
     case REG_STATE:
@@ -46,37 +45,30 @@ void receiveI2C(int packetSize)
       break;
 
     case REG_BATTERY:
-      Wire.write((uint32_t) (battery*10));
+      Wire.write(battery);
       break;
 
     default:
       bitSet(error_code, ERROR_I2C_REG_NOT_FOUND);
       break;
-    }
+  }
+}
+
+void receiveI2C(int packetSize)
+{
+  if (packetSize == 1) // READ OPERATION
+  {
+    byte read_reg = Wire.read();
   }
   else if (packetSize > 1)  // WRITE OPERATION
   {
     byte reg = Wire.read();
-    uint32_t val;
-    switch (packetSize)
-    {
-      case 2:
-        val =  Wire.read();
-        break;
-
-      case 3:
-        val = Wire.read() << 8 | Wire.read();
-        break;
-
-      case 5:
-        val = Wire.read() << 24 | Wire.read() << 16 | Wire.read() << 8 | Wire.read();
-        break;
-
-      default:
-        val =  Wire.read();
-        break;
+    uint32_t val = 0;
+    int8_t i = packetSize - 2;
+    while(i >= 0){
+      val = val | Wire.read() << 8*i;
+      i--;
     }
-    Serial.println(val);
     switch (reg)
     {
       case REG_SLEEP:
@@ -219,6 +211,7 @@ void setup()
   // I2C INIT
   Wire.begin(MKRFOX_ADDR);
   Wire.onReceive(receiveI2C); // register event
+  Wire.onRequest(sendI2C);
 
   // RTC INIT
   rtc.begin(false);
@@ -253,7 +246,6 @@ void setup()
 void loop()
 {
     rtc.disableAlarm();
-    delay(10000);
     if(rtc.getHours() < sleep_hour && rtc.getHours() > wakeup_hour){
       battery = analogRead(PIN_BATTERY)*BATTERY_CONSTANT;
       if(battery > battery_threshold){

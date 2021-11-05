@@ -9,7 +9,7 @@
 
 #define MKRFOX_ADDR 0x55
 
-#define REG_TIME 0x01
+#define REG_TIME 0x00
 #define REG_STATE 0x07
 #define REG_BATTERY 0x08
 #define REG_BATTERY_THRESHOLD 0x08
