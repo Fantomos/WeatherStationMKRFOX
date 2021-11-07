@@ -9,7 +9,7 @@ uint32_t error_code;
 uint32_t battery_threshold;
 bool request_sigfox_time;
 bool request_sigfox_data;
-uint32_t data_sigfox;
+uint8_t data_sigfox[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t read_reg = 0;
 RTCZero rtc;
 TimeChangeRule Rule_France_summer = {"RHEE", Last, Sun, Mar, 2, 120}; // Règle de passage à l'heure d'été pour la France
@@ -63,62 +63,65 @@ void receiveI2C(int packetSize)
   else if (packetSize > 1)  // WRITE OPERATION
   {
     byte reg = Wire.read();
-    uint32_t val = 0;
-    int8_t i = packetSize - 2;
-    while(i >= 0){
-      val = val | Wire.read() << 8*i;
-      i--;
+    if(reg == REG_DATA){
+      for(uint8_t i = 0; i<12;i++){
+         data_sigfox[i] = Wire.read();
+      }
+      request_sigfox_data = true;
     }
-    switch (reg)
-    {
-      case REG_SLEEP:
-        sleep_hour = val;
-        break;
+    else{
+      uint32_t val = 0;
+      int8_t i = packetSize - 2;
+      while(i >= 0){
+        val = val | Wire.read() << 8*i;
+        i--;
+      }
+      switch (reg)
+      {
+        case REG_SLEEP:
+          sleep_hour = val;
+          break;
 
-      case REG_WAKE:
-        wakeup_hour = val;
-        break;
+        case REG_WAKE:
+          wakeup_hour = val;
+          break;
 
-      case REG_ERROR:
-        error_code = val;
-        break;
+        case REG_ERROR:
+          error_code = val;
+          break;
 
-      case REG_STATE:
-        state = val;
-        break;
+        case REG_STATE:
+          state = val;
+          break;
 
-      case REG_TIME:
-        if(val == 0){
-          request_sigfox_time = true;
-        }else{
-          setRTCTime(val);
-        }
-        break;
+        case REG_TIME:
+          if(val == 0){
+            request_sigfox_time = true;
+          }else{
+            setRTCTime(val);
+          }
+          break;
 
-      case REG_DATA:
-        data_sigfox = val;
-        request_sigfox_data = true;
-        break;
+        case REG_BATTERY_THRESHOLD:
+          battery_threshold = val;
+          break;
 
-      case REG_BATTERY_THRESHOLD:
-        battery_threshold = val;
-        break;
-
-      default:
-        bitSet(error_code, ERROR_I2C_REG_NOT_FOUND);
-        break;
+        default:
+          bitSet(error_code, ERROR_I2C_REG_NOT_FOUND);
+          break;
+      }
     }
   }
 }
 
 
-void sendDataToSigfox(uint32_t data){
+void sendDataToSigfox(uint8_t data[12]){
   if(!SigFox.begin()){
       bitSet(error_code, ERROR_SIGFOX_BEGIN);
   }
   delay(100);
   SigFox.beginPacket();
-  SigFox.write(data);
+  SigFox.write(data,12);
   int ret = SigFox.endPacket(); 
   if (ret > 0) {
     bitSet(error_code, ERROR_SIGFOX_TRANSMIT);
@@ -149,7 +152,8 @@ uint32_t getTimeFromSigfox(){
   }
   SigFox.end();
   uint32_t time = (uint32_t) (time_buf[0] << 24 | time_buf[1] << 16 | time_buf[2] << 8 | time_buf[3]);
-  return  (uint32_t) Convert_to_France.toLocal(time);
+  time = (uint32_t) Convert_to_France.toLocal(time);
+  return  time;
 }
 
 void setRTCTime(uint32_t unix_time){
@@ -209,12 +213,12 @@ void alarmNextCycle(){
 void setup()
 {
   // I2C INIT
-  Wire.begin(MKRFOX_ADDR);
-  Wire.onReceive(receiveI2C); // register event
-  Wire.onRequest(sendI2C);
+  Wire.begin(MKRFOX_ADDR); // Démarre l'I2C en mode esclave avec l'adresse MKRFOX_ADDR
+  Wire.onReceive(receiveI2C); // On déclare l'interruption pour la réception d'un message I2C
+  Wire.onRequest(sendI2C);  // On déclare l'interruption pour la requete d'une réponse I2C
 
   // RTC INIT
-  rtc.begin(false);
+  rtc.begin(false); // Démarre l'horloce RTC
 
   // PIN INIT
   pinMode(PIN_POWER_5V, OUTPUT);
@@ -229,40 +233,37 @@ void setup()
   battery_threshold = DEFAULT_BATTERY_THRESHOLD;
   request_sigfox_time = false;
   request_sigfox_data = false;
-  data_sigfox = 0;
 
  
 
   // RTC INIT
   rtc.setHours(12); // Lors du 1er démarrage on règle l'heure dans la plage de fonctionnement
-  rtc.attachInterrupt(alarmFirstCycle);
-  rtc.setAlarmTime(00, (rtc.getMinutes()+CYCLE_TIME)%60, 00);
-  rtc.enableAlarm(rtc.MATCH_MMSS);
-  rtc.standbyMode();
-
-
+  rtc.attachInterrupt(alarmFirstCycle);  // On attache l'interruption à faire lors du réveil
+  rtc.setAlarmTime(00, (rtc.getMinutes()+CYCLE_TIME)%60, 00); // On règle l'heure de l'alarme
+  rtc.enableAlarm(rtc.MATCH_MMSS); // On active l'alarme sur une correspondance minutes/secondes
+  rtc.standbyMode(); // On rentre en sleep mode
 }
 
 void loop()
 {
-    rtc.disableAlarm();
-    if(rtc.getHours() < sleep_hour && rtc.getHours() > wakeup_hour){
-      battery = analogRead(PIN_BATTERY)*BATTERY_CONSTANT;
-      if(battery > battery_threshold){
-        powerUpRPI(); // On allume le RPI
+    rtc.disableAlarm(); // On désactive l'alarme
+    if(rtc.getHours() < sleep_hour && rtc.getHours() > wakeup_hour){  // Si on est dans la plage horaire de fonctionnement 
+      battery = analogRead(PIN_BATTERY)*BATTERY_CONSTANT; // On mesure la tension de la batterie pour vérifier l'état de charge
+      if(battery > battery_threshold){ // Si la tension est suffisament grande (batterie suffisament chargée)
+        powerUpRPI(); // On allume le RPI et on attend son message nous indiquant qu'il est prêt à fonctionner
         while(bitRead(state, FLAG_RPI_POWER) == 1){ // Tant que le RPI n'a pas terminé, on continue à répondre aux commandes I2C
-            if(request_sigfox_time){
-              setRTCTime(getTimeFromSigfox());
-              request_sigfox_time = false;
+            if(request_sigfox_time){ // Si le RPI nous demande d'obtenir l'heure par le module SigFox
+              setRTCTime(getTimeFromSigfox()); // On récupere l'heure par SigFox et met à jour le registre et le module RTC
+              request_sigfox_time = false; // On clear la demande une fois qu'elle a été satisfaite
             }
-            if(request_sigfox_data){
-              sendDataToSigfox(data_sigfox);
-              request_sigfox_data = false;
+            if(request_sigfox_data){ // Si le RPI nous demande d'envoyer les données par SigFox
+              sendDataToSigfox(data_sigfox); // On envoie les données par SigFox
+              request_sigfox_data = false; // On clear la demande une fois qu'elle a été satisfaite
             }
         };
         powerDownRPI(); // On éteints le RPI
       }
-      setAlarmForNextCycle(); // On prépare le prochain révéil pour dans 10 min
+      setAlarmForNextCycle(); // On prépare le prochain révéil pour le prochain cycle
     }else{
       setAlarmForNextDay(); // On prépare le prochain révéil pour le jour suivant
     }
