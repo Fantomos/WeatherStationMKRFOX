@@ -9,7 +9,7 @@ uint32_t error_code = 0;
 uint32_t battery_threshold = -1;
 bool request_sigfox_time = false;
 bool request_sigfox_data = false;
-uint32_t data_sigfox = 0;
+uint8_t data_sigfox[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 RTCZero rtc;
 uint8_t read_reg = 0;
 
