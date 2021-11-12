@@ -1,21 +1,20 @@
 #include <main.h>
 
 
-uint32_t state;
-uint16_t battery;
-uint32_t sleep_hour;
-uint32_t wakeup_hour;
-uint32_t error_code;
-uint32_t battery_threshold;
-bool request_sigfox_time;
-bool request_sigfox_data;
-uint8_t data_sigfox[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t read_reg = 0;
+uint32_t state = 0;
+uint32_t battery = 0;
+uint8_t sleep_hour = 19;
+uint8_t wakeup_hour = 7;
+uint32_t error_code = 0;
+uint32_t battery_threshold = -1;
+bool request_sigfox_time = false;
+bool request_sigfox_data = false;
+uint32_t data_sigfox = 0;
 RTCZero rtc;
+uint8_t read_reg = 0;
 TimeChangeRule Rule_France_summer = {"RHEE", Last, Sun, Mar, 2, 120}; // Règle de passage à l'heure d'été pour la France
 TimeChangeRule Rule_France_winter = {"RHHE", Last, Sun, Oct, 3, 60}; // Règle de passage à l'heure d'hiver la France
 Timezone Convert_to_France(Rule_France_summer, Rule_France_winter); // Objet de conversion d'heure avec les caractéristiques de la métropole française
-
 
 void sendI2C(){
   switch (read_reg)
@@ -58,11 +57,11 @@ void receiveI2C(int packetSize)
 {
   if (packetSize == 1) // READ OPERATION
   {
-    byte read_reg = Wire.read();
+    read_reg = Wire.read();
   }
   else if (packetSize > 1)  // WRITE OPERATION
   {
-    byte reg = Wire.read();
+    uint8_t reg = Wire.read();
     if(reg == REG_DATA){
       for(uint8_t i = 0; i<12;i++){
          data_sigfox[i] = Wire.read();
@@ -121,7 +120,7 @@ void sendDataToSigfox(uint8_t data[12]){
   }
   delay(100);
   SigFox.beginPacket();
-  SigFox.write(data,12);
+  SigFox.write(data);
   int ret = SigFox.endPacket(); 
   if (ret > 0) {
     bitSet(error_code, ERROR_SIGFOX_TRANSMIT);
@@ -192,20 +191,17 @@ void powerUpRPI(){
   while(bitRead(state, FLAG_RPI_POWER) == 0){}; // On attends que le RPI s'initialise
 }
 
-void powerDownRPI()
-{
+void powerDownRPI(){
   delay(5000);
   digitalWrite(PIN_POWER_5V, LOW);
 }
 
 void alarmFirstCycle(){
     bitSet(state, FLAG_FIRST_CYCLE);
-
 }
 
 void alarmNextCycle(){
     bitClear(state, FLAG_FIRST_CYCLE);
-
 }
 
 
