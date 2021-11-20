@@ -32,8 +32,8 @@
 #define FLAG_SIGFOX_TRANSMITTED 4
 
 // Définition des numéros de PIN
-#define PIN_POWER_5V 1
-#define PIN_BATTERY 0
+#define PIN_POWER_5V PIN_PA20
+#define PIN_BATTERY PIN_A0
 
 // Définition des valeurs par défauts
 #define DEFAULT_SLEEP_HOUR 19

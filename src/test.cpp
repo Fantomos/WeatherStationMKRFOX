@@ -1,3 +1,5 @@
+/** @file test.cpp*/
+
 #include <main.h>
 
 
@@ -229,7 +231,7 @@ void setup()
 {
   // SERIAL INIT
   Serial.begin(9600);
-  while (!Serial){};
+  // while (!Serial){};
 
   // SigFox INIT
   SigFox.begin();
@@ -262,6 +264,7 @@ void setup()
 
   setRTCTime(1634293107);
 
+  battery = analogRead(PIN_BATTERY)*BATTERY_CONSTANT*1000;
 }
 
 void loop()
