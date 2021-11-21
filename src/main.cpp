@@ -1,4 +1,5 @@
-// #include <main.h>
+/** @file main.cpp*/
+#include <main.h>
 
 
 // uint32_t state = 0;
@@ -263,5 +264,4 @@
 //     }else{
 //       setAlarmForNextDay(); // On prépare le prochain révéil pour le jour suivant
 //     }
-
 // }

@@ -3,7 +3,7 @@
 #include <main.h>
 
 
-uint32_t state = 0;
+uint32_t state = 0; 
 uint32_t battery = 0;
 uint8_t sleep_hour = 19;
 uint8_t wakeup_hour = 7;
