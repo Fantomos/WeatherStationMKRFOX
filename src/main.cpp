@@ -229,15 +229,10 @@
 //   battery_threshold = DEFAULT_BATTERY_THRESHOLD;
 //   request_sigfox_time = false;
 //   request_sigfox_data = false;
-
  
 
 //   // RTC INIT
 //   rtc.setHours(12); // Lors du 1er démarrage on règle l'heure dans la plage de fonctionnement
-//   rtc.attachInterrupt(alarmFirstCycle);  // On attache l'interruption à faire lors du réveil
-//   rtc.setAlarmTime(00, (rtc.getMinutes()+CYCLE_TIME)%60, 00); // On règle l'heure de l'alarme
-//   rtc.enableAlarm(rtc.MATCH_MMSS); // On active l'alarme sur une correspondance minutes/secondes
-//   rtc.standbyMode(); // On rentre en sleep mode
 // }
 
 // void loop()
