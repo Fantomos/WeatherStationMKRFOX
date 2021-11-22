@@ -1,11 +1,12 @@
+/** @file main.cpp*/
 // #include <main.h>
 
 
-// uint32_t state = 0;
+// uint8_t state = 0;
 // uint32_t battery = 0;
 // uint8_t sleep_hour = 19;
 // uint8_t wakeup_hour = 7;
-// uint32_t error_code = 0;
+// uint8_t error_code = 0;
 // uint32_t battery_threshold = -1;
 // bool request_sigfox_time = false;
 // bool request_sigfox_data = false;
@@ -258,5 +259,4 @@
 //     }else{
 //       setAlarmForNextDay(); // On prépare le prochain révéil pour le jour suivant
 //     }
-
 // }

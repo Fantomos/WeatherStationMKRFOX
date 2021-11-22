@@ -25,7 +25,7 @@
 #define ERROR_I2C_REG_NOT_FOUND 2
 
 // Définition des bits de flag
-#define FLAG_RPI_POWER 0
+#define FLAG_RPI_POWER 0 
 #define FLAG_TIME_REFRESHED 1
 #define FLAG_FIRST_CYCLE 2
 #define FLAG_RPI_DATA_READY 3
