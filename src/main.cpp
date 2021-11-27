@@ -1,4 +1,4 @@
-/** @file main.cpp*/
+// /** @file main.cpp*/
 // #include <main.h>
 
 
@@ -10,9 +10,9 @@
 // uint32_t battery_threshold = -1;
 // bool request_sigfox_time = false;
 // bool request_sigfox_data = false;
-// uint8_t data_sigfox[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 // RTCZero rtc;
 // uint8_t read_reg = 0;
+// SigfoxMessage msg;
 // TimeChangeRule Rule_France_summer = {"RHEE", Last, Sun, Mar, 2, 120}; // Règle de passage à l'heure d'été pour la France
 // TimeChangeRule Rule_France_winter = {"RHHE", Last, Sun, Oct, 3, 60}; // Règle de passage à l'heure d'hiver la France
 // Timezone Convert_to_France(Rule_France_summer, Rule_France_winter); // Objet de conversion d'heure avec les caractéristiques de la métropole française
@@ -35,8 +35,8 @@
 //     case REG_TIME:
 //       {
 //       u_int32_t time = rtc.getEpoch();
-//       uint8_t data[] = {time >> 24, time >> 16, time >> 8, time};
-//       Wire.write(data,(uint8_t)4);
+//       uint8_t time_array[] = {(time >> 24) & 0xFF, (time >> 16) & 0xFF, (time >> 8) & 0xFF, time & 0xFF};
+//       Wire.write(time_array,(uint8_t)4);
 //       }
 //       break;
 
@@ -45,7 +45,10 @@
 //       break;
 
 //     case REG_BATTERY:
-//       Wire.write(battery);
+//     {
+//       uint8_t battery_array[] = {(battery >> 24) & 0xFF, (battery >> 16) & 0xFF, (battery >> 8) & 0xFF, battery & 0xFF};
+//       Wire.write(battery_array, 4);
+//     }
 //       break;
 
 //     default:
@@ -64,10 +67,15 @@
 //   {
 //     uint8_t reg = Wire.read();
 //     if(reg == REG_DATA){
-//       for(uint8_t i = 0; i<12;i++){
-//          data_sigfox[i] = Wire.read();
-//       }
-//       request_sigfox_data = true;
+//         msg.speed = Wire.read();
+//         msg.speed_max = Wire.read();
+//         msg.direction = Wire.read() << 8 | Wire.read();
+//         msg.direction_max = Wire.read() << 8 | Wire.read();
+//         msg.humidity = Wire.read();
+//         msg.temperature = Wire.read();
+//         msg.pressure = Wire.read() << 8 | Wire.read();
+//         msg.voltage = Wire.read() << 8 | Wire.read();
+//         request_sigfox_data = true;
 //     }
 //     else{
 //       uint32_t val = 0;
@@ -115,15 +123,17 @@
 // }
 
 
-// void sendDataToSigfox(uint8_t data[12]){
+// void sendDataToSigfox(){
 //   if(!SigFox.begin()){
 //       bitSet(error_code, ERROR_SIGFOX_BEGIN);
 //   }
 //   delay(100);
+//   SigFox.status();
+//   delay(1);
 //   SigFox.beginPacket();
-//   SigFox.write(data);
+//   SigFox.write((uint8_t*)&msg,12);
 //   int ret = SigFox.endPacket(); 
-//   if (ret > 0) {
+//   if(ret > 0) {
 //     bitSet(error_code, ERROR_SIGFOX_TRANSMIT);
 //   }
 //   SigFox.end();
@@ -135,6 +145,8 @@
 //     bitSet(error_code, ERROR_SIGFOX_BEGIN);
 //   }
 //   delay(100);
+//   SigFox.status();
+//   delay(1);
 //   SigFox.beginPacket();
 //   SigFox.write(0);
 //   int ret = SigFox.endPacket(true); 
@@ -166,6 +178,7 @@
 // void setAlarmForNextCycle(){
 //   SigFox.begin();
 //   delay(200);
+//   SigFox.debug();
 //   SigFox.end();
 //   delay(200);
 //   rtc.detachInterrupt();
@@ -178,6 +191,7 @@
 // void setAlarmForNextDay(){
 //   SigFox.begin();
 //   delay(200);
+//   SigFox.debug();
 //   SigFox.end();
 //   delay(200);
 //   rtc.detachInterrupt();
@@ -209,6 +223,12 @@
 // // FIRST STARTUP
 // void setup()
 // {
+//   // SigFox INIT
+//   SigFox.begin();
+//   delay(200);
+//   SigFox.debug();
+//   SigFox.end();
+//   delay(200);
 //   // I2C INIT
 //   Wire.begin(MKRFOX_ADDR); // Démarre l'I2C en mode esclave avec l'adresse MKRFOX_ADDR
 //   Wire.onReceive(receiveI2C); // On déclare l'interruption pour la réception d'un message I2C
@@ -249,7 +269,7 @@
 //               request_sigfox_time = false; // On clear la demande une fois qu'elle a été satisfaite
 //             }
 //             if(request_sigfox_data){ // Si le RPI nous demande d'envoyer les données par SigFox
-//               sendDataToSigfox(data_sigfox); // On envoie les données par SigFox
+//               sendDataToSigfox(); // On envoie les données par SigFox
 //               request_sigfox_data = false; // On clear la demande une fois qu'elle a été satisfaite
 //             }
 //         };

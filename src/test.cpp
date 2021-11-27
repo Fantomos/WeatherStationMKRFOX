@@ -3,25 +3,23 @@
 #include <main.h>
 
 
-uint32_t state = 0; 
+uint8_t state = 0; 
 uint32_t battery = 0;
 uint8_t sleep_hour = 19;
 uint8_t wakeup_hour = 7;
-uint32_t error_code = 0;
+uint8_t error_code = 0;
 uint32_t battery_threshold = -1;
 bool request_sigfox_time = false;
 bool request_sigfox_data = false;
-uint8_t data_sigfox[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 RTCZero rtc;
 uint8_t read_reg = 0;
+SigfoxMessage msg;
 
 TimeChangeRule Rule_France_summer = {"RHEE", Last, Sun, Mar, 2, 120}; // Règle de passage à l'heure d'été pour la France
 TimeChangeRule Rule_France_winter = {"RHHE", Last, Sun, Oct, 3, 60}; // Règle de passage à l'heure d'hiver la France
 Timezone Convert_to_France(Rule_France_summer, Rule_France_winter); // Objet de conversion d'heure avec les caractéristiques de la métropole française
 
 void sendI2C(){
-  Serial.println("Registre : ");
-  Serial.println(read_reg);
   switch (read_reg)
   {
     case REG_SLEEP:
@@ -29,15 +27,12 @@ void sendI2C(){
       break;
 
     case REG_WAKE:
-      Serial.println("Wake : ");
-      Serial.println(wakeup_hour);
       Wire.write(wakeup_hour);
       break;
 
     case REG_ERROR:
       {
-      uint8_t error_code_array[] = {(error_code >> 24) & 0xFF, (error_code >> 16) & 0xFF, (error_code >> 8) & 0xFF, error_code & 0xFF};
-      Wire.write(error_code_array, 4);
+      Wire.write(error_code);
       }
       break;
 
@@ -45,16 +40,13 @@ void sendI2C(){
       {
       u_int32_t time = rtc.getEpoch();
       uint8_t time_array[] = {(time >> 24) & 0xFF, (time >> 16) & 0xFF, (time >> 8) & 0xFF, time & 0xFF};
-      Serial.println("Time : ");
-      Serial.println(time);
       Wire.write(time_array,(uint8_t)4);
       }
       break;
 
     case REG_STATE:
       {
-      uint8_t state_array[] = {(state >> 24) & 0xFF, (state >> 16) & 0xFF, (state >> 8) & 0xFF, state & 0xFF};
-      Wire.write(state_array, 4);
+      Wire.write(state);
       }
       break;
 
@@ -84,9 +76,14 @@ void receiveI2C(int packetSize)
   {
     uint8_t reg = Wire.read();
     if(reg == REG_DATA){
-      for(uint8_t i = 0; i<12;i++){
-         data_sigfox[i] = Wire.read();
-      }
+      msg.speed = Wire.read();
+      msg.speed_max = Wire.read();
+      msg.direction = Wire.read() << 8 | Wire.read();
+      msg.direction_max = Wire.read() << 8 | Wire.read();
+      msg.humidity = Wire.read();
+      msg.temperature = Wire.read();
+      msg.pressure = Wire.read() << 8 | Wire.read();
+      msg.voltage = Wire.read() << 8 | Wire.read();
       request_sigfox_data = true;
     }
     else{
@@ -135,15 +132,17 @@ void receiveI2C(int packetSize)
 }
 
 
-void sendDataToSigfox(uint8_t data[12]){
+void sendDataToSigfox(){
   if(!SigFox.begin()){
       bitSet(error_code, ERROR_SIGFOX_BEGIN);
   }
   delay(100);
+  SigFox.status();
+  delay(1);
   SigFox.beginPacket();
-  SigFox.write(data);
+  SigFox.write((uint8_t*)&msg,12);
   int ret = SigFox.endPacket(); 
-  if (ret > 0) {
+  if(ret > 0) {
     bitSet(error_code, ERROR_SIGFOX_TRANSMIT);
   }
   SigFox.end();
@@ -155,6 +154,8 @@ uint32_t getTimeFromSigfox(){
     bitSet(error_code, ERROR_SIGFOX_BEGIN);
   }
   delay(100);
+  SigFox.status();
+  delay(1);
   SigFox.beginPacket();
   SigFox.write(0);
   int ret = SigFox.endPacket(true); 
@@ -172,7 +173,7 @@ uint32_t getTimeFromSigfox(){
   }
   SigFox.end();
   uint32_t time = (uint32_t) (time_buf[0] << 24 | time_buf[1] << 16 | time_buf[2] << 8 | time_buf[3]);
-  time = (uint32_t) Convert_to_France.toLocal(time);
+  // time = (uint32_t) Convert_to_France.toLocal(time);
   return  time;
 }
 
@@ -186,6 +187,7 @@ void setRTCTime(uint32_t unix_time){
 void setAlarmForNextCycle(){
   SigFox.begin();
   delay(200);
+  SigFox.debug();
   SigFox.end();
   delay(200);
   rtc.detachInterrupt();
@@ -198,6 +200,7 @@ void setAlarmForNextCycle(){
 void setAlarmForNextDay(){
   SigFox.begin();
   delay(200);
+  SigFox.debug();
   SigFox.end();
   delay(200);
   rtc.detachInterrupt();
@@ -229,13 +232,11 @@ void alarmNextCycle(){
 // FIRST STARTUP
 void setup()
 {
-  // SERIAL INIT
-  Serial.begin(9600);
-  // while (!Serial){};
 
   // SigFox INIT
   SigFox.begin();
   delay(200);
+  SigFox.debug();
   SigFox.end();
   delay(200);
 
@@ -251,6 +252,9 @@ void setup()
   pinMode(PIN_POWER_5V, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(PIN_BATTERY, INPUT);
+  // pinMode(PIN_POWER_ATTINY, OUTPUT);
+
+  // digitalWrite(PIN_POWER_ATTINY, HIGH);
 
   // REGISTER INIT
   state = 0; 
@@ -269,7 +273,14 @@ void setup()
 
 void loop()
 {
-
-
+ if(request_sigfox_time){ // Si le RPI nous demande d'obtenir l'heure par le module SigFox
+    setRTCTime(getTimeFromSigfox()); // On récupere l'heure par SigFox et met à jour le registre et le module RTC
+    request_sigfox_time = false; // On clear la demande une fois qu'elle a été satisfaite
+  }
+  if(request_sigfox_data){ // Si le RPI nous demande d'envoyer les données par SigFox
+    sendDataToSigfox(); // On envoie les données par SigFox
+    request_sigfox_data = false; // On clear la demande une fois qu'elle a été satisfaite
+  }
+  
 }
 

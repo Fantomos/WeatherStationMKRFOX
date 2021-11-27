@@ -34,6 +34,8 @@
 // Définition des numéros de PIN
 #define PIN_POWER_5V PIN_PA20
 #define PIN_BATTERY PIN_A0
+#define PIN_POWER_ATTINY PIN_PA22
+
 
 // Définition des valeurs par défauts
 #define DEFAULT_SLEEP_HOUR 19
@@ -42,7 +44,7 @@
 
 // Définition de constante
 #define CYCLE_TIME 10
-#define BATTERY_CONSTANT 0.0149560117
+#define BATTERY_CONSTANT 0.014978485
 
 // Prototype des fonctions
 void sendI2C();
@@ -56,3 +58,14 @@ void powerUpRPI();
 void powerDownRPI();
 void alarmFirstCycle();
 void alarmNextCycle();
+
+typedef struct __attribute__ ((packed)) sigfox_message {
+  uint8_t speed;
+  uint8_t speed_max;
+  uint16_t direction;
+  uint16_t direction_max;
+  uint8_t humidity;
+  uint8_t temperature;
+  uint16_t pressure;
+  uint16_t voltage;
+} SigfoxMessage;
