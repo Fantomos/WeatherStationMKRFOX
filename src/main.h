@@ -59,6 +59,13 @@ void powerDownRPI();
 void alarmFirstCycle();
 void alarmNextCycle();
 
+/**
+ * \struct sigfox_message
+ * \brief Message transmis via Sigfox.
+ *
+ * sigfox_message est une structure composé de toutes les données 
+ * à transmettre et formaté pour l'envoie via Sigfox.
+ */
 typedef struct __attribute__ ((packed)) sigfox_message {
   uint8_t speed;
   uint8_t speed_max;

@@ -1,4 +1,7 @@
-// /** @file main.cpp*/
+// /** @file main.cpp
+//  * Programme du MKRFOX1200 pour la station météo.
+//  * 
+// */
 // #include <main.h>
 
 
@@ -17,6 +20,9 @@
 // TimeChangeRule Rule_France_winter = {"RHHE", Last, Sun, Oct, 3, 60}; // Règle de passage à l'heure d'hiver la France
 // Timezone Convert_to_France(Rule_France_summer, Rule_France_winter); // Objet de conversion d'heure avec les caractéristiques de la métropole française
 
+// /**
+//  * \brief Interruption I2C lors de l'envoi de données.
+//  */
 // void sendI2C(){
 //   switch (read_reg)
 //   {
@@ -57,6 +63,10 @@
 //   }
 // }
 
+// /**
+//  * \brief Interruption I2C lors de la réception de données.
+//  * \param packetSize Nombre d'octets reçus.
+//  */
 // void receiveI2C(int packetSize)
 // {
 //   if (packetSize == 1) // READ OPERATION
@@ -122,7 +132,9 @@
 //   }
 // }
 
-
+// /**
+//  * \brief Transmet les données au réseau Sigfox.
+//  */
 // void sendDataToSigfox(){
 //   if(!SigFox.begin()){
 //       bitSet(error_code, ERROR_SIGFOX_BEGIN);
@@ -140,6 +152,10 @@
 //   bitSet(state, FLAG_SIGFOX_TRANSMITTED);
 // }
 
+// /**
+//  * \brief Obtiens l'heure actuelle à partir du réseau Sigfox.
+//  * \return Heure actuelle au format UNIX.
+//  */
 // uint32_t getTimeFromSigfox(){
 //   if(!SigFox.begin()){
 //     bitSet(error_code, ERROR_SIGFOX_BEGIN);
@@ -168,6 +184,10 @@
 //   return  time;
 // }
 
+// /**
+//  * \brief Met à jour l'horloge RTC du microcontrolleur.
+//  * \param unix_time Heure actuelle au format UNIX.
+//  */
 // void setRTCTime(uint32_t unix_time){
 //   time_t t = unix_time;
 //   rtc.setTime(hour(t), minute(t), second(t));
@@ -175,6 +195,9 @@
 //   bitSet(state, FLAG_TIME_REFRESHED);
 // }
 
+// /**
+//  * \brief Active l'alarme pour le cycle suivant dans les x minutes programmées.
+//  */
 // void setAlarmForNextCycle(){
 //   SigFox.begin();
 //   delay(200);
@@ -188,6 +211,9 @@
 //   rtc.standbyMode();
 // }
 
+// /**
+//  * \brief Active l'alarme pour le jour suivant à l'heure programmée.
+//  */
 // void setAlarmForNextDay(){
 //   SigFox.begin();
 //   delay(200);
@@ -201,11 +227,17 @@
 //   rtc.standbyMode();
 // }
 
+// /**
+//  * \brief Active l'alimentation du Raspberry Pi et attends la fin de son démaragge.
+//  */
 // void powerUpRPI(){
 //   digitalWrite(PIN_POWER_5V, HIGH); // On active l'alimentation du RPI
 //   while(bitRead(state, FLAG_RPI_POWER) == 0){}; // On attends que le RPI s'initialise
 // }
 
+// /**
+//  * \brief Désactive l'alimentation du Raspberry Pi.
+//  */
 // void powerDownRPI(){
 //   delay(5000);
 //   digitalWrite(PIN_POWER_5V, LOW);
@@ -220,7 +252,9 @@
 // }
 
 
-// // FIRST STARTUP
+// /**
+//  * \brief Initialisation du microcontrolleur à son premier démarrage (lors de l'installation de la station).
+//  */
 // void setup()
 // {
 //   // SigFox INIT
@@ -256,6 +290,9 @@
 //   rtc.setHours(12); // Lors du 1er démarrage on règle l'heure dans la plage de fonctionnement
 // }
 
+// /**
+//  * \brief Boucle exécutant un cycle à chaque réveil.
+//  */
 // void loop()
 // {
 //     rtc.disableAlarm(); // On désactive l'alarme
