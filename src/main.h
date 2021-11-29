@@ -1,4 +1,4 @@
-#define VERY_LOW_POWER 1 // Permet lors de l'initialisation du framework Arduino (wiring.c) de ne pas initialiser les PIN par défaut pour diminuer la consomation en sleep mode
+// #define VERY_LOW_POWER 1 // Permet lors de l'initialisation du framework Arduino (wiring.c) de ne pas initialiser les PIN par défaut pour diminuer la consomation en sleep mode
 #include <Arduino.h>
 #include <SigFox.h>
 #include <ArduinoLowPower.h>
@@ -28,19 +28,17 @@
 #define FLAG_RPI_POWER 0 
 #define FLAG_TIME_REFRESHED 1
 #define FLAG_FIRST_CYCLE 2
-#define FLAG_RPI_DATA_READY 3
-#define FLAG_SIGFOX_TRANSMITTED 4
 
 // Définition des numéros de PIN
-#define PIN_POWER_5V PIN_PA20
+#define PIN_POWER_5V 0
 #define PIN_BATTERY PIN_A0
-#define PIN_POWER_ATTINY PIN_PA22
+#define PIN_POWER_ATTINY 13
 
 
 // Définition des valeurs par défauts
 #define DEFAULT_SLEEP_HOUR 19
 #define DEFAULT_WAKEUP_HOUR 8
-#define DEFAULT_BATTERY_THRESHOLD 11
+#define DEFAULT_BATTERY_THRESHOLD 10800
 
 // Définition de constante
 #define CYCLE_TIME 10

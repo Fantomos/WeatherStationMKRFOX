@@ -8,7 +8,7 @@ uint32_t battery = 0;
 uint8_t sleep_hour = 19;
 uint8_t wakeup_hour = 7;
 uint8_t error_code = 0;
-uint32_t battery_threshold = -1;
+uint32_t battery_threshold = DEFAULT_BATTERY_THRESHOLD;
 bool request_sigfox_time = false;
 bool request_sigfox_data = false;
 RTCZero rtc;
@@ -146,7 +146,6 @@ void sendDataToSigfox(){
     bitSet(error_code, ERROR_SIGFOX_TRANSMIT);
   }
   SigFox.end();
-  bitSet(state, FLAG_SIGFOX_TRANSMITTED);
 }
 
 uint32_t getTimeFromSigfox(){
@@ -233,6 +232,7 @@ void alarmNextCycle(){
 void setup()
 {
 
+  delay(10000);
   // SigFox INIT
   SigFox.begin();
   delay(200);
@@ -250,11 +250,13 @@ void setup()
 
   // PIN INIT
   pinMode(PIN_POWER_5V, OUTPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(PIN_POWER_ATTINY, OUTPUT);
   pinMode(PIN_BATTERY, INPUT);
-  // pinMode(PIN_POWER_ATTINY, OUTPUT);
 
-  // digitalWrite(PIN_POWER_ATTINY, HIGH);
+
+
+  digitalWrite(PIN_POWER_5V, HIGH);
+  digitalWrite(PIN_POWER_ATTINY, HIGH);
 
   // REGISTER INIT
   state = 0; 
