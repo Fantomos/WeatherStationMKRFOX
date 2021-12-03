@@ -42,7 +42,7 @@
 
 // Définition de constante
 #define CYCLE_TIME 10
-#define BATTERY_CONSTANT 0.014978485
+#define BATTERY_CONSTANT 14.978485
 
 // Prototype des fonctions
 void sendI2C();

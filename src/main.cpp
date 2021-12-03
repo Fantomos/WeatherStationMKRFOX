@@ -7,10 +7,10 @@
 
 // uint8_t state = 0;
 // uint32_t battery = 0;
-// uint8_t sleep_hour = 19;
-// uint8_t wakeup_hour = 7;
+// uint8_t sleep_hour = DEFAULT_SLEEP_HOUR;
+// uint8_t wakeup_hour = DEFAULT_WAKEUP_HOUR;
 // uint8_t error_code = 0;
-// uint32_t battery_threshold = -1;
+// uint32_t battery_threshold = DEFAULT_BATTERY_THRESHOLD;
 // bool request_sigfox_time = false;
 // bool request_sigfox_data = false;
 // RTCZero rtc;
@@ -149,7 +149,6 @@
 //     bitSet(error_code, ERROR_SIGFOX_TRANSMIT);
 //   }
 //   SigFox.end();
-//   bitSet(state, FLAG_SIGFOX_TRANSMITTED);
 // }
 
 // /**
@@ -180,7 +179,7 @@
 //   }
 //   SigFox.end();
 //   uint32_t time = (uint32_t) (time_buf[0] << 24 | time_buf[1] << 16 | time_buf[2] << 8 | time_buf[3]);
-//   time = (uint32_t) Convert_to_France.toLocal(time);
+// // time = (uint32_t) Convert_to_France.toLocal(time);
 //   return  time;
 // }
 
@@ -273,6 +272,7 @@
 
 //   // PIN INIT
 //   pinMode(PIN_POWER_5V, OUTPUT);
+//   pinMode(PIN_POWER_ATTINY, OUTPUT);
 //   pinMode(PIN_BATTERY, INPUT);
 
 //   // REGISTER INIT

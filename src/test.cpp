@@ -5,8 +5,8 @@
 
 uint8_t state = 0; 
 uint32_t battery = 0;
-uint8_t sleep_hour = 19;
-uint8_t wakeup_hour = 7;
+uint8_t sleep_hour = DEFAULT_SLEEP_HOUR;
+uint8_t wakeup_hour = DEFAULT_WAKEUP_HOUR;
 uint8_t error_code = 0;
 uint32_t battery_threshold = DEFAULT_BATTERY_THRESHOLD;
 bool request_sigfox_time = false;
@@ -31,9 +31,7 @@ void sendI2C(){
       break;
 
     case REG_ERROR:
-      {
       Wire.write(error_code);
-      }
       break;
 
     case REG_TIME:
@@ -45,15 +43,19 @@ void sendI2C(){
       break;
 
     case REG_STATE:
-      {
       Wire.write(state);
-      }
       break;
 
     case REG_BATTERY:
       {
       uint8_t battery_array[] = {(battery >> 24) & 0xFF, (battery >> 16) & 0xFF, (battery >> 8) & 0xFF, battery & 0xFF};
       Wire.write(battery_array, 4);
+      }
+      break;
+    case REG_BATTERY_THRESHOLD:
+      {
+      uint8_t battery_threshold_array[] = {(battery_threshold >> 24) & 0xFF, (battery_threshold >> 16) & 0xFF, (battery_threshold >> 8) & 0xFF, battery_threshold & 0xFF};
+      Wire.write(battery_threshold_array, 4);
       }
       break;
 
@@ -66,8 +68,6 @@ void sendI2C(){
 
 void receiveI2C(int packetSize)
 {
-  Serial.println("SIze");
-  Serial.println(packetSize);
   if (packetSize == 1) // READ OPERATION
   {
     read_reg = Wire.read();
@@ -184,11 +184,14 @@ void setRTCTime(uint32_t unix_time){
 }
 
 void setAlarmForNextCycle(){
+  // On s'assure que le module Sigfox est bien désactivé avant de rentrer en sommeil (bug de la librairie Sigfox)
   SigFox.begin();
   delay(200);
   SigFox.debug();
   SigFox.end();
   delay(200);
+
+  // On attache les interruption de l'alarme, la configure et rentre en sommeil
   rtc.detachInterrupt();
   rtc.attachInterrupt(alarmNextCycle);
   rtc.setAlarmTime(00, 00, (rtc.getSeconds()+10)%60);
@@ -197,11 +200,17 @@ void setAlarmForNextCycle(){
 }
 
 void setAlarmForNextDay(){
-  SigFox.begin();
+  // On éteint l'ATTINY pour la nuit
+  digitalWrite(PIN_POWER_ATTINY, LOW);
+
+  // On s'assure que le module Sigfox est bien désactivé avant de rentrer en sommeil (bug de la librairie Sigfox)
+  SigFox.begin(); 
   delay(200);
   SigFox.debug();
   SigFox.end();
   delay(200);
+
+  // On attache les interruption de l'alarme, la configure et rentre en sommeil
   rtc.detachInterrupt();
   rtc.attachInterrupt(alarmFirstCycle);
   rtc.setAlarmTime(wakeup_hour, 00, 00);
@@ -211,16 +220,23 @@ void setAlarmForNextDay(){
 
 void powerUpRPI(){
   digitalWrite(PIN_POWER_5V, HIGH); // On active l'alimentation du RPI
-  while(bitRead(state, FLAG_RPI_POWER) == 0){}; // On attends que le RPI s'initialise
+  while(bitRead(state, FLAG_RPI_POWER) == 0){
+    delay(100);
+    digitalWrite(LED_BUILTIN,LOW);
+    delay(100);
+    digitalWrite(LED_BUILTIN,HIGH);
+  }; // On attends que le RPI s'initialise
 }
 
 void powerDownRPI(){
+  digitalWrite(LED_BUILTIN,LOW);
   delay(5000);
   digitalWrite(PIN_POWER_5V, LOW);
 }
 
 void alarmFirstCycle(){
-    bitSet(state, FLAG_FIRST_CYCLE);
+  digitalWrite(PIN_POWER_ATTINY, HIGH);
+  bitSet(state, FLAG_FIRST_CYCLE);
 }
 
 void alarmNextCycle(){
@@ -252,11 +268,15 @@ void setup()
   pinMode(PIN_POWER_5V, OUTPUT);
   pinMode(PIN_POWER_ATTINY, OUTPUT);
   pinMode(PIN_BATTERY, INPUT);
+  pinMode(LED_BUILTIN,OUTPUT);
 
 
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(1000);
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(1000);
+  digitalWrite(LED_BUILTIN, LOW);
 
-  digitalWrite(PIN_POWER_5V, HIGH);
-  digitalWrite(PIN_POWER_ATTINY, HIGH);
 
   // REGISTER INIT
   state = 0; 
@@ -268,21 +288,38 @@ void setup()
   request_sigfox_time = false;
   request_sigfox_data = false;
 
-  setRTCTime(1634293107);
-
-  battery = analogRead(PIN_BATTERY)*BATTERY_CONSTANT*1000;
+  rtc.setHours(12);
+  alarmFirstCycle();
 }
 
 void loop()
 {
- if(request_sigfox_time){ // Si le RPI nous demande d'obtenir l'heure par le module SigFox
-    setRTCTime(getTimeFromSigfox()); // On récupere l'heure par SigFox et met à jour le registre et le module RTC
-    request_sigfox_time = false; // On clear la demande une fois qu'elle a été satisfaite
-  }
-  if(request_sigfox_data){ // Si le RPI nous demande d'envoyer les données par SigFox
-    sendDataToSigfox(); // On envoie les données par SigFox
-    request_sigfox_data = false; // On clear la demande une fois qu'elle a été satisfaite
-  }
+    rtc.disableAlarm(); // On désactive l'alarme
+    if(rtc.getHours() < sleep_hour && rtc.getHours() > wakeup_hour){  // Si on est dans la plage horaire de fonctionnement 
+      digitalWrite(PIN_POWER_ATTINY, HIGH);
+      battery = analogRead(PIN_BATTERY)*BATTERY_CONSTANT; // On mesure la tension de la batterie pour vérifier l'état de charge
+      if(battery > battery_threshold){ // Si la tension est suffisament grande (batterie suffisament chargée)
+        powerUpRPI(); // On allume le RPI et on attend son message nous indiquant qu'il est prêt à fonctionner
+        while(bitRead(state, FLAG_RPI_POWER) == 1){ // Tant que le RPI n'a pas terminé, on continue à répondre aux commandes I2C
+          delay(1000);
+          digitalWrite(LED_BUILTIN,LOW);
+          delay(1000);
+          digitalWrite(LED_BUILTIN,HIGH);
+          if(request_sigfox_time){ // Si le RPI nous demande d'obtenir l'heure par le module SigFox
+            setRTCTime(getTimeFromSigfox()); // On récupere l'heure par SigFox et met à jour le registre et le module RTC
+            request_sigfox_time = false; // On clear la demande une fois qu'elle a été satisfaite
+          }
+          if(request_sigfox_data){ // Si le RPI nous demande d'envoyer les données par SigFox
+            sendDataToSigfox(); // On envoie les données par SigFox
+            request_sigfox_data = false; // On clear la demande une fois qu'elle a été satisfaite
+          }
+        };
+        powerDownRPI(); // On éteints le RPI
+      }
+      setAlarmForNextCycle(); // On prépare le prochain révéil pour le prochain cycle
+    }else{
+      setAlarmForNextDay(); // On prépare le prochain révéil pour le jour suivant
+    }
   
 }
 
