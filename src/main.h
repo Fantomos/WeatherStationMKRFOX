@@ -28,6 +28,7 @@
 #define FLAG_RPI_POWER 0 
 #define FLAG_TIME_REFRESHED 1
 #define FLAG_FIRST_CYCLE 2
+#define FLAG_SHUTDOWN_RPI 3
 
 // Définition des numéros de PIN
 #define PIN_POWER_5V 0
@@ -38,11 +39,19 @@
 // Définition des valeurs par défauts
 #define DEFAULT_SLEEP_HOUR 19
 #define DEFAULT_WAKEUP_HOUR 8
-#define DEFAULT_BATTERY_THRESHOLD 10800
+#define DEFAULT_BATTERY_THRESHOLD 11000
 
 // Définition de constante
 #define CYCLE_TIME 10
 #define BATTERY_CONSTANT 14.978485
+
+// Définition des timeouts
+#define TIMEOUT_WAKEUP 120000
+#define TIMEOUT_CYCLE 120000
+#define TIMEOUT_SHUTDOWN 4000
+
+// Flag definissant si le Raspberry doit être éteint après avoir fini son cycle
+#define SHUTDOWN_RPI true
 
 // Prototype des fonctions
 void sendI2C();

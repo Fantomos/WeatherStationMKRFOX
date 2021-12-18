@@ -230,35 +230,8 @@ void setAlarmForNextCycle(){
   SigFox.debug();
   SigFox.end();
   delay(200); 
-  // On attache les interruption de l'alarme, la configure et rentre en sommeil
-  rtc.detachInterrupt();
-  rtc.attachInterrupt(alarmNextCycle);
   rtc.setAlarmTime(00, (rtc.getMinutes()+CYCLE_TIME)%60, 00);
   rtc.enableAlarm(rtc.MATCH_MMSS);
-  rtc.standbyMode();
-}
-
-/**
- * \brief Active l'alarme pour le jour suivant à l'heure programmée.
- */
-void setAlarmForNextDay(){ 
-  // On désactive la ligne I2C
-  endI2C();
-
-  // On éteint l'ATTINY pour la nuit
-  digitalWrite(PIN_POWER_ATTINY, LOW);
-
-  // On s'assure que le module Sigfox est bien désactivé avant de rentrer en sommeil (bug de la librairie Sigfox)
-  SigFox.begin(); 
-  delay(200);
-  SigFox.debug();
-  SigFox.end();
-  delay(200);
-  // On attache les interruption de l'alarme, la configure et rentre en sommeil
-  rtc.detachInterrupt();
-  rtc.attachInterrupt(alarmFirstCycle);
-  rtc.setAlarmTime(wakeup_hour, 00, 00);
-  rtc.enableAlarm(rtc.MATCH_HHMMSS);
   rtc.standbyMode();
 }
 
@@ -278,22 +251,6 @@ void powerDownRPI(){
    delay(TIMEOUT_SHUTDOWN);
   digitalWrite(PIN_POWER_5V, LOW);
 }
-
-/**
- * \brief Interruption intervenant lors du premier cycle de la journée
- */
-void alarmFirstCycle(){
-    digitalWrite(PIN_POWER_ATTINY, HIGH);
-    bitSet(state, FLAG_FIRST_CYCLE);
-}
-
-/**
- * \brief Interruption intervenant lors du
- */
-void alarmNextCycle(){
-    bitClear(state, FLAG_FIRST_CYCLE);
-}
-
 
 /**
  * \brief Initialisation du microcontrolleur à son premier démarrage (lors de l'installation de la station).
@@ -331,9 +288,10 @@ void setup()
     bitClear(state, FLAG_SHUTDOWN_RPI);
   }
 
-  // RTC INIT
-  rtc.setHours(12); // Lors du 1er démarrage on règle l'heure dans la plage de fonctionnement
-  alarmFirstCycle();
+  // Lors du 1er démarrage on règle l'heure dans la plage de fonctionnement, on alimente l'ATTINY et on active le flag du premier cycle
+  rtc.setHours(12); 
+  digitalWrite(PIN_POWER_ATTINY, HIGH);
+  bitSet(state, FLAG_FIRST_CYCLE);
 }
 
 /**
@@ -344,7 +302,7 @@ void loop()
     rtc.disableAlarm(); // On désactive l'alarme
     initI2C(); // On initialise l'I2C
     if(rtc.getHours() < sleep_hour && rtc.getHours() > wakeup_hour){  // Si on est dans la plage horaire de fonctionnement 
-      digitalWrite(PIN_POWER_ATTINY, HIGH);
+      digitalWrite(PIN_POWER_ATTINY, HIGH); // On alimente l'ATTINY
       battery = analogRead(PIN_BATTERY)*BATTERY_CONSTANT; // On mesure la tension de la batterie pour vérifier l'état de charge
       if(battery > battery_threshold){ // Si la tension est suffisament grande (batterie suffisament chargée)
         powerUpRPI(); // On allume le RPI et on attend son message nous indiquant qu'il est prêt à fonctionner
@@ -363,8 +321,11 @@ void loop()
           powerDownRPI(); // On éteints le RPI
         }
       }
+      bitClear(state, FLAG_FIRST_CYCLE);
       setAlarmForNextCycle(); // On prépare le prochain révéil pour le prochain cycle
-    }else{
-      setAlarmForNextDay(); // On prépare le prochain révéil pour le jour suivant
+    }else{  // On prépare le prochain révéil pour le jour suivant
+      digitalWrite(PIN_POWER_ATTINY, LOW); // On éteint l'ATTINY
+      bitSet(state, FLAG_FIRST_CYCLE);  // On active le flag du premier cycle
+      setAlarmForNextCycle();
     }
 }
