@@ -1,4 +1,4 @@
-# Autonomous weather station for paragliding
+# Autonomous weather station for paragliding (MKRFOX part)
 
 This project is meant to be delivered to a paragliding association in order to allow them to have weather information through SMS, walkie-talkie and Internet (FFVL website). 
 The aim is to strengthen the system (software and hardware) in order to improve the battery’s life, make it more resistant to the outdoor environment and improve the system integration.
